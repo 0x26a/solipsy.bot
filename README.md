@@ -1,6 +1,8 @@
 # Solipsy
 
-An efficient crypto sniper bot based on the Solana blockchain
+An efficient Solana sniper bot written in python.
+
+
 ![Image](https://github.com/user-attachments/assets/e1e35513-207b-4f6a-8626-e2858a9277d6)
 
 ## Warnings
