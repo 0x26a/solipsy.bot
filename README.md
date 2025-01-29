@@ -1,7 +1,7 @@
 # Solipsy
 
 An efficient crypto sniper bot based on the Solana blockchain
-
+![Image](https://github.com/user-attachments/assets/181b9ea2-868e-41ed-a677-712142e9f6c2)
 ## Warnings
 This code was written for learning purpose  and I do not encourage anyone to use it without `SIMULATION_MODE` turned on.
 
