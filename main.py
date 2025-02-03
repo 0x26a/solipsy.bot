@@ -21,19 +21,25 @@ import solders
 from solders.keypair import Keypair
 from solders.signature import Signature
 
+
+class UpdateTimeout(Exception):
+	pass
 class SwapFailed(Exception):
 	pass
 class SerializationFailed(Exception):
 	pass
+class RugpullCheckFailed(Exception):
+	pass
 
 class Session:
 	def __init__(self, amount,slippageIn,slippageOut,fee):
-		self.fee = fee
+		self.fee = int(fee)
 		self.keys = None
 		self.token = None
-		self.amount = amount
-		self.slippageIn = slippageIn
-		self.slippageOut = slippageOut
+		self.amount = int(amount)
+		self.slippageIn = int(slippageIn)
+		self.slippageOut = int(slippageOut)
+
 	def startup(self,raw_key):
 		if name == "nt":
 			_ = system("cls") 
@@ -42,24 +48,44 @@ class Session:
 		init()
 		self.keys = Keypair.from_bytes(base58.b58decode(raw_key))
 		self.details()
-		print("press "+col("[", Fore.CYAN)+"ENTER"+col("]", Fore.CYAN)+ " to reach RPC node")
-		input()
 
 	def details(self):
 		print(BANNER)
-		print(col("\nslippage: ", Fore.CYAN) + f"{int(self.slippageIn / 100)}%, {int(self.slippageOut / 100)}%")
-		print(col("amount: ", Fore.CYAN) + f"{self.amount / 10**9} SOL")
-		print(col("wallet: ", Fore.CYAN) + f"{self.keys.pubkey()}\n")
+		print(col("\n\u25B8 slippage: ", Fore.CYAN) + f"{int(self.slippageIn / 100)}%, {int(self.slippageOut / 100)}%")
+		print(col("\u25B8 amount: ", Fore.CYAN) + f"{self.amount / 10**9} SOL")
+		print(col("\u25B8 wallet: ", Fore.CYAN) + f"{self.keys.pubkey()}\n")
 
 	def process(self):
-		self.swap(self.transactionOrder(_input=config.SOL_LP_MINT, _output=self.token.mint, buy=True))
+		self.swap(self.transaction(_input=config.SOL_LP_MINT, _output=self.token.mint, buy=True))
+		while True:
+			try:
+				data = requests.post(config.HELIUS_POST, json={
+					"jsonrpc": "2.0", "id": 1,
+				    "method": "getTokenAccountsByOwner",
+					"params": [str(self.keys.pubkey()), {"mint": self.token.mint}, {"encoding":"jsonParsed"}]}).json()
+				self.amount = int(data["result"]["value"][0]["account"]["data"]["parsed"]["info"]["tokenAmount"]["amount"])
+				break
+			except:
+				time.sleep(1)
+				pass
+		print(f"press {col("[", Fore.CYAN)}ENTER{col("]", Fore.CYAN)} to sell {self.amount} {self.token.name}")
+		input()
+		self.swap(self.transaction(_input=self.token.mint,_output=config.SOL_LP_MINT, buy=False))
 
-		self.token.set_decimals()
-		print(msg("please enter amount to swap back"))
-		x = float(input("~"+col("# ", Fore.CYAN)))
-		self.amount = int(x * (10**self.token.decimals))
-
-		self.swap(self.transactionOrder(_input=self.token.mint,_output=config.SOL_LP_MINT, buy=False))
+	def get_wallet_update(self):
+		attempts = 0
+		while attempts < settings.UPDATE_TIME_LIM:
+			try:
+				data = requests.post(config.HELIUS_POST, json={
+					"jsonrpc": "2.0", "id": 1,
+				    "method": "getTokenAccountsByOwner",
+					"params": [str(self.keys.pubkey()), {"mint": self.token.mint}, {"encoding":"jsonParsed"}]}).json()
+				self.amount = int(data["result"]["value"][0]["account"]["data"]["parsed"]["info"]["tokenAmount"]["amount"])
+				break
+			except:
+				time.sleep(1)
+				attempts += 1
+		raise UpdateTimeout()
 
 	def swap(self, tx):
 		r = None
@@ -85,14 +111,18 @@ class Session:
 				attempts += 1
 		raise SwapFailed()
 
-	def transactionOrder(self,_input,_output, buy=True):
+	def transaction(self,_input,_output, buy=True):
 		attempts = 0
 		serialized = None
 		while attempts < settings.SERIALIZE_ATTEMPTS:
 			try:
-				quote = requests.get(f"https://quote-api.jup.ag/v6/quote?inputMint={_input}&outputMint={_output}&amount={self.amount}&slippageBps={self.slippageIn if buy else self.slippageOut}")
+				quote = requests.get(f"https://api.jup.ag/swap/v1/quote?inputMint={_input}&outputMint={_output}&amount={self.amount}&slippageBps={self.slippageIn if buy else self.slippageOut}")
 				quote = quote.json()
-				r = requests.post("https://quote-api.jup.ag/v6/swap",json={
+				r = requests.post("https://api.jup.ag/swap/v1/swap", 
+					headers= {
+    					'Content-Type': 'application/json'
+    				},
+					data=json.dumps({
 					"quoteResponse" : quote,
 					"userPublicKey" : str(self.keys.pubkey()),
 					"prioritizationFeeLamports": {
@@ -100,8 +130,8 @@ class Session:
 							"maxLamports": self.fee,
 							"priorityLevel": "veryHigh"
 						}
-					}
-				})
+					}})
+				)
 				serialized = r.json()
 				swap_tx = serialized["swapTransaction"]
 				raw_tx = solders.transaction.VersionedTransaction.from_bytes(base64.b64decode(swap_tx))
@@ -112,43 +142,37 @@ class Session:
 				return encoded_tx
 			except:
 				panic(f"({datetime.now()}) couldn't create signed transaction order [{col(serialized["error"], Fore.YELLOW)}]")
-				time.sleep(8)
+				time.sleep(1)
 				attempts += 1
 		raise SerializationFailed()
 
 class Token:
 	def __init__(self, mint):
-		self.mc = None
 		self.flags = []
 		self.name = None
 		self.mint = mint
 		self.rugged = None
 		self.creator = None
-		self.decimals = None
 		self.mintAuth = None
 		self.liquidity = None
 		self.freezeAuth = None
 		print(msgok(f"({datetime.now()}) fetched mint {mint}"))
 
-	def set_decimals(self):
-		try:
-			r = requests.post(
-			    config.HELIUS_POST,
-			    headers={"Content-Type":"application/json"},
-			    json={"jsonrpc":"2.0","id":1,"method":"getTokenSupply","params":[self.mint]}
-			).json()
-			self.decimals = r["result"]["value"]["decimals"]
-		except:
-			panic(f"couldn't fetch {self.mint} decimals")
 	def is_rugpull(self):
+		data = None
 		print(msg(f"({datetime.now()}) analysing potential rugpull signs..."))
-		data = requests.get(f"{config.RGXYZ}/tokens/{self.mint}/report").json()
-		self.rugged = data["rugged"]
-		self.creator = data["creator"]
-		self.name = data["tokenMeta"]["name"]
-		self.mintAuth = data["mintAuthority"]
-		self.freezeAuth = data["freezeAuthority"]
-		self.liquidity = data["totalMarketLiquidity"]
+
+		try:
+			data = requests.get(f"{config.RGXYZ}/tokens/{self.mint}/report").json()
+			self.rugged = data["rugged"]
+			self.creator = data["creator"]
+			self.name = data["tokenMeta"]["name"]
+			self.mintAuth = data["mintAuthority"]
+			self.freezeAuth = data["freezeAuthority"]
+			self.liquidity = data["totalMarketLiquidity"]
+		except:
+			raise RugpullCheckFailed()
+
 		try:
 			if not settings.ALLOW["pump.fun"]:
 				assert not self.mint.endswith("pump")
@@ -170,7 +194,7 @@ class Token:
 		"\n\tmint: "+str(self.mint),
 		"\n\tcreator: "+str(self.creator))
 		for f in self.flags:
-			print("\t- "+f)
+			print("\t\u25B8 "+f)
 		print(msgno("the token triggered an unallowed flag") if rugpull else msgok("checks passed"))
 		return rugpull
 
@@ -238,15 +262,18 @@ async def rpc(sniper: Session):
 def main():
 	try:
 		sniper = Session(
-			settings.SOL_AMOUNT, 
+			int(round(settings.SOL_AMOUNT)), 
 			settings.SLIPPAGE_IN,
 			settings.SLIPPAGE_OUT, 
 			settings.MAX_FEE
 		)
 		sniper.startup(secret.KEY)
+		print("press "+col("[", Fore.CYAN)+"ENTER"+col("]", Fore.CYAN)+ " to reach RPC node")
+		input()
 		asyncio.run(rpc(sniper))
 		print(msg("bot halted"))
 	except:
 		print()
 		panic("bot halted")
+
 main()
