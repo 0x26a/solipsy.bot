@@ -3,7 +3,7 @@
 A fast and efficient Solana sniper bot written in python.
 
 
-![Image](https://github.com/user-attachments/assets/e1e35513-207b-4f6a-8626-e2858a9277d6)
+![Image](https://github.com/user-attachments/assets/371165b3-dcd9-4398-9536-6e2fd3e93fa1)
 
 ## Warnings
 This code was written for learning purpose  and I do not encourage anyone to use it without `SIMULATION_MODE` turned on.
