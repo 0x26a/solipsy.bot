@@ -28,7 +28,7 @@ SWAP_ATTEMPTS = 1
 UPDATE_TIME_LIM = 30
 
 # -- TRANSACTION SETTINGS --
-MAX_FEE = 0 # in lamports
+MAX_FEE = 0 # in lamports, increase for more swap speed
 SOL_AMOUNT = 0  # in lamports
 
 SLIPPAGE_IN = 2 * 100 # 2%
