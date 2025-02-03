@@ -51,9 +51,11 @@ class Session:
 
 	def details(self):
 		print(BANNER)
+		k = str(self.keys.pubkey())
+		k = k.replace(k[len(k)-6:],"*"*6)
 		print(col("\n\u25B8 slippage: ", Fore.CYAN) + f"{int(self.slippageIn / 100)}%, {int(self.slippageOut / 100)}%")
 		print(col("\u25B8 amount: ", Fore.CYAN) + f"{self.amount / 10**9} SOL")
-		print(col("\u25B8 wallet: ", Fore.CYAN) + f"{self.keys.pubkey()}\n")
+		print(col("\u25B8 wallet: ", Fore.CYAN) + f"{k}\n")
 
 	def process(self):
 		self.swap(self.transaction(_input=config.SOL_LP_MINT, _output=self.token.mint, buy=True))
@@ -68,7 +70,7 @@ class Session:
 			except:
 				time.sleep(1)
 				pass
-		print(f"press {col("[", Fore.CYAN)}ENTER{col("]", Fore.CYAN)} to sell {self.amount} {self.token.name}")
+		print(f"press {col("[", Fore.CYAN)}ENTER{col("]", Fore.CYAN)} to sell {self.amount} {self.token.symbol}")
 		input()
 		self.swap(self.transaction(_input=self.token.mint,_output=config.SOL_LP_MINT, buy=False))
 
@@ -148,38 +150,43 @@ class Session:
 
 class Token:
 	def __init__(self, mint):
+		self.mc = None
 		self.flags = []
 		self.name = None
 		self.mint = mint
-		self.rugged = None
+		self.symbol = None
 		self.creator = None
 		self.mintAuth = None
 		self.liquidity = None
 		self.freezeAuth = None
 		print(msgok(f"({datetime.now()}) fetched mint {mint}"))
 
-	def is_rugpull(self):
+	def check(self):
 		data = None
-		print(msg(f"({datetime.now()}) analysing potential rugpull signs..."))
-
+		print(msg(f"({datetime.now()}) analysing token..."))
 		try:
 			data = requests.get(f"{config.RGXYZ}/tokens/{self.mint}/report").json()
-			self.rugged = data["rugged"]
+			data2 = requests.post(
+			    config.HELIUS_POST,
+			    headers={"Content-Type":"application/json"},
+			    json={"jsonrpc":"2.0","id":"test","method":"getAsset","params":{"id":self.mint}}).json()
 			self.creator = data["creator"]
 			self.name = data["tokenMeta"]["name"]
 			self.mintAuth = data["mintAuthority"]
 			self.freezeAuth = data["freezeAuthority"]
-			self.liquidity = data["totalMarketLiquidity"]
+			self.liquidity = round(data["totalMarketLiquidity"] * 100) / 100
+			self.symbol = data2["result"]["token_info"]["symbol"]
+			self.supply = data2["result"]["token_info"]["supply"]
+			self.mc = round(data2["result"]["token_info"]["price_info"]["price_per_token"] * data2["result"]["token_info"]["supply"] / (10**(data2["result"]["token_info"]["decimals"])) * 100) / 100
 		except:
 			raise RugpullCheckFailed()
-
 		try:
 			if not settings.ALLOW["pump.fun"]:
 				assert not self.mint.endswith("pump")
-			assert not self.rugged
 			assert self.freezeAuth == None
 			assert self.mintAuth == None
 			assert self.liquidity > settings.MIN_LIQUIDITY
+			assert self.mc > settings.MIN_MARKETCAP
 			for flag in data["risks"]:
 				self.flags.append(flag["name"])
 				assert settings.ALLOW[flag["name"]]
@@ -188,11 +195,7 @@ class Token:
 			return self.display(True)
 
 	def display(self, rugpull):
-		print("\trugged: "+str(self.rugged),
-		"\n\tname: "+str(self.name),
-		"\n\tliquidity: "+str(self.liquidity)+"$",
-		"\n\tmint: "+str(self.mint),
-		"\n\tcreator: "+str(self.creator))
+		print(f"\tname: {self.name}\n\tsymbol: {self.symbol}\n\tmarket cap: {self.mc}$\n\tliquidity: {self.liquidity}$\n\tmint: {self.mint}\n\tcreator: {self.creator}")
 		for f in self.flags:
 			print("\t\u25B8 "+f)
 		print(msgno("the token triggered an unallowed flag") if rugpull else msgok("checks passed"))
@@ -248,7 +251,7 @@ async def rpc(sniper: Session):
 							mint = fetch_mint(signature)
 							if mint != None:
 								sniper.token = Token(mint)
-								if not sniper.token.is_rugpull():
+								if not sniper.token.check():
 									sniper.process()
 									break
 	
@@ -268,6 +271,7 @@ def main():
 			settings.MAX_FEE
 		)
 		sniper.startup(secret.KEY)
+
 		print("press "+col("[", Fore.CYAN)+"ENTER"+col("]", Fore.CYAN)+ " to reach RPC node")
 		input()
 		asyncio.run(rpc(sniper))
