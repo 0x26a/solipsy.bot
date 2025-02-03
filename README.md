@@ -35,8 +35,8 @@ SLIPPAGE_IN = 2 * 100 # 2%
 SLIPPAGE_OUT = 2 * 100 # 2% 
 
 # -- RUGCHECK SETTINGS --
-MIN_LIQUIDITY = 0 # minimum total liquidity in USDc
-
+MIN_LIQUIDITY = 0 # in USDc
+MIN_MARKETCAP = 0 # in USDc
 ALLOW = {
 	"pump.fun" : True,
 	"High ownership" : True,
