@@ -10,7 +10,7 @@ This code was written for learning purpose  and I do not encourage anyone to use
 
 Your money, your problems.
 
-## Runtime chronology detailed
+## Runtime chronology
 * The bot reaches HELIUS RPC node and looks for liquidity pool creation.
 * The mint associated to the LP is fetched.
 * The token is analyzed through rugcheck.xyz API and custom evaluation settings are applied.
