@@ -25,6 +25,7 @@ You can chose to run in `SIMULATION_MODE`, allow `pump.fun` tokens and many othe
 SIMULATION_MODE = False
 SERIALIZE_ATTEMPTS = 1
 SWAP_ATTEMPTS = 1
+UPDATE_TIME_LIM = 30
 
 # -- TRANSACTION SETTINGS --
 MAX_FEE = 0 # in lamports
