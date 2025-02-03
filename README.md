@@ -1,6 +1,6 @@
 # Solipsy
 
-An efficient Solana sniper bot written in python.
+A fast and efficient Solana sniper bot written in python.
 
 
 ![Image](https://github.com/user-attachments/assets/e1e35513-207b-4f6a-8626-e2858a9277d6)
