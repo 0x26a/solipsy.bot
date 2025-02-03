@@ -15,8 +15,7 @@ Your money, your problems.
 * The mint associated to the LP is fetched.
 * The token is analyzed through rugcheck.xyz API and custom evaluation settings are applied.
 * If the token doesn't trigger any unallowed flags, it is bought.
-* You provide the amount of the given token you own to the program (use something like GMGN, Dexscreener, etc in parallel)
-* Press enter to sell
+* Now you just have to press enter to exit your position.
 
 ## Settings 
 You can chose to run in `SIMULATION_MODE`, allow `pump.fun` tokens and many other things in `settings.py`.
