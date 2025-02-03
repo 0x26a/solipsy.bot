@@ -13,7 +13,7 @@ Your money, your problems.
 ## Runtime chronology
 * The bot reaches HELIUS RPC node and looks for liquidity pool creation.
 * The mint associated to the LP is fetched.
-* The token is analyzed through rugcheck.xyz API and custom evaluation settings are applied.
+* The token metadata are fetched and custom appreciation settings are applied.
 * If the token doesn't trigger any unallowed flags, it is bought.
 * Now you just have to press enter to exit your position.
 
