@@ -2,6 +2,7 @@
 SIMULATION_MODE = True
 SERIALIZE_ATTEMPTS = 1
 SWAP_ATTEMPTS = 1
+UPDATE_TIME_LIM = 30 # seconds before giving up on trying to find the bought token in your wallet, must be coherent with the fees
 
 # -- TRANSACTION SETTINGS --
 MAX_FEE = 0 # in lamports
@@ -27,4 +28,3 @@ ALLOW = {
 	"Single holder ownership": True,
 	"Top 10 holders high ownership": True
 }
-
