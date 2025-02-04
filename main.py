@@ -59,17 +59,7 @@ class Session:
 
 	def process(self):
 		self.swap(self.transaction(_input=config.SOL_LP_MINT, _output=self.token.mint, buy=True))
-		while True:
-			try:
-				data = requests.post(config.HELIUS_POST, json={
-					"jsonrpc": "2.0", "id": 1,
-				    "method": "getTokenAccountsByOwner",
-					"params": [str(self.keys.pubkey()), {"mint": self.token.mint}, {"encoding":"jsonParsed"}]}).json()
-				self.amount = int(data["result"]["value"][0]["account"]["data"]["parsed"]["info"]["tokenAmount"]["amount"])
-				break
-			except:
-				time.sleep(1)
-				pass
+		self.get_wallet_update()
 		print(f"press {col("[", Fore.CYAN)}ENTER{col("]", Fore.CYAN)} to sell {self.amount} {self.token.symbol}")
 		input()
 		self.swap(self.transaction(_input=self.token.mint,_output=config.SOL_LP_MINT, buy=False))
