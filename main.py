@@ -166,7 +166,6 @@ class Token:
 			self.freezeAuth = data["freezeAuthority"]
 			self.liquidity = round(data["totalMarketLiquidity"] * 100) / 100
 			self.symbol = data2["result"]["token_info"]["symbol"]
-			self.supply = data2["result"]["token_info"]["supply"]
 			self.mc = round(data2["result"]["token_info"]["price_info"]["price_per_token"] * data2["result"]["token_info"]["supply"] / (10**(data2["result"]["token_info"]["decimals"])) * 100) / 100
 		except:
 			raise RugpullCheckFailed()
